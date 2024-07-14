@@ -7,6 +7,8 @@ let csvFiles = {
   "2024": "sales_2024.csv"
 };
 
+let tooltip;
+
 function preload() {
   // Load CSV files
   for (let year in csvFiles) {
@@ -32,6 +34,8 @@ function setup() {
   yearSelector.style('background-color', 'black');
   yearSelector.style('color', 'white');
   yearSelector.style('padding', '5px');
+
+  tooltip = createDiv('').style('position', 'absolute').style('background-color', 'white').style('color', 'black').style('padding', '5px').style('border', '1px solid black').style('border-radius', '5px').style('display', 'none');
 
   noLoop();
 }
@@ -81,9 +85,19 @@ function drawBars() {
       }
 
       fill(color);
-      rect(x + index * barWidth, height - barHeight - 130, barWidth - 5, barHeight);
+      let barX = x + index * barWidth;
+      let barY = height - barHeight - 130;
+      let barW = barWidth - 5;
+      rect(barX, barY, barW, barHeight);
       fill(255); // White color for text
-      text(sales / 1000 + "k", x + index * barWidth + barWidth / 2 - 2.5, height - barHeight - 140);
+      text(sales / 1000 + "k", barX + barW / 2, barY - 10);
+
+      // Check for hover
+      if (mouseX > barX && mouseX < barX + barW && mouseY > barY && mouseY < barY + barHeight) {
+        tooltip.html(`${d.get("manufacturer")}, ${month}: ${sales}`);
+        tooltip.style('display', 'block');
+        tooltip.position(mouseX + 15, mouseY + 15);
+      }
     });
 
     fill(255); // White color for text
@@ -112,4 +126,38 @@ function drawLegend() {
   rect(20, 110, 20, 20);
   fill(255); // White color for text
   text("Toyota", 50, 120);
+}
+
+function mouseMoved() {
+  let data = salesData[selectedYear].getRows();
+  let months = Array.from(new Set(data.map(d => d.get("month")))); // Unique months
+  let barWidth = (width - 200) / (months.length * 3); // Adjust the bar width to ensure equal spacing on both sides
+  let maxSales = max(data.map(d => int(d.get("sales"))));
+
+  let tooltipVisible = false;
+
+  for (let i = 0; i < months.length; i++) {
+    let month = months[i];
+    let monthData = data.filter(d => d.get("month") === month);
+    let x = (i * 3) * barWidth + 100; // Adjust the x position
+
+    monthData.forEach((d, index) => {
+      let sales = int(d.get("sales"));
+      let barHeight = map(sales, 0, maxSales, 0, height - 250); // Adjust height to leave space for month labels
+      let barX = x + index * barWidth;
+      let barY = height - barHeight - 130;
+      let barW = barWidth - 5;
+
+      if (mouseX > barX && mouseX < barX + barW && mouseY > barY && mouseY < barY + barHeight) {
+        tooltip.html(`${d.get("manufacturer")}, ${month}: ${sales}`);
+        tooltip.style('display', 'block');
+        tooltip.position(mouseX + 15, mouseY + 15);
+        tooltipVisible = true;
+      }
+    });
+  }
+
+  if (!tooltipVisible) {
+    tooltip.style('display', 'none');
+  }
 }
